@@ -433,19 +433,29 @@
     </div>
 
     <!-- =============================================
-         JAVASCRIPT - LOGIQUE PRINCIPALE (LINK EXTRACTOR)
+         JAVASCRIPT - LOGIQUE PRINCIPALE (LINK EXTRACTOR v4.0 CHUNKED)
          ============================================= -->
     <script>
         // =============================================
-        // VARIABLES GLOBALES
+        // VARIABLES GLOBALES - STRATÉGIE CHUNKING
         // =============================================
 
         // Stockage des URLs extraites
         let extractedUrls = [];
-        // Nombre de téléchargements simultanés
-        const BATCH_SIZE = 3;
+
+        // CHUNKING: Taille des lots pour les ZIPs (50 fichiers par ZIP)
+        const CHUNK_SIZE = 50;
+        // Parallélisme réseau (5 téléchargements simultanés)
+        const PARALLEL_DOWNLOADS = 5;
+
         // Compteur d'erreurs CORS
         let corsErrors = 0;
+        // Tracking de la vitesse
+        let downloadStartTime = 0;
+        // Compteur global pour les statistiques
+        let totalSuccessful = 0;
+        let totalChunks = 0;
+        let currentChunk = 0;
 
         // =============================================
         // ÉLÉMENTS DU DOM
@@ -610,7 +620,6 @@
             const urls = [];
 
             // Regex pour trouver les appels downloadMemories('URL', ...)
-            // Format: downloadMemories('https://...', ...)
             const regex = /downloadMemories\s*\(\s*['"]([^'"]+)['"]/g;
             let match;
 
@@ -637,7 +646,7 @@
                 }
             }
 
-            console.log(`${urls.length} URLs extraites`);
+            console.log(`⚡ ${urls.length} URLs extraites`);
             return urls;
         }
 
@@ -650,15 +659,37 @@
             progressContainer.classList.add('hidden');
             uploadContent.classList.add('hidden');
 
+            const numChunks = Math.ceil(extractedUrls.length / CHUNK_SIZE);
             fileCount.textContent = extractedUrls.length;
 
             fileDetails.innerHTML = `
-                <div class="bg-stone-50 rounded-2xl p-4 text-center border border-stone-100 col-span-2">
-                    <p class="text-2xl mb-1">🔗</p>
-                    <p class="text-xl font-bold text-stone-800">${extractedUrls.length}</p>
-                    <p class="text-stone-500 text-sm">Liens de téléchargement prêts</p>
+                <div class="bg-stone-50 rounded-2xl p-4 text-center border border-stone-100">
+                    <p class="text-2xl mb-1">📦</p>
+                    <p class="text-xl font-bold text-stone-800">${numChunks}</p>
+                    <p class="text-stone-500 text-sm">ZIP${numChunks > 1 ? 's' : ''} à créer</p>
+                </div>
+                <div class="bg-stone-50 rounded-2xl p-4 text-center border border-stone-100">
+                    <p class="text-2xl mb-1">�</p>
+                    <p class="text-xl font-bold text-stone-800">${CHUNK_SIZE}</p>
+                    <p class="text-stone-500 text-sm">fichiers/ZIP max</p>
                 </div>
             `;
+
+            // Ajouter un message explicatif si plusieurs parties
+            if (numChunks > 1) {
+                const warningDiv = document.createElement('div');
+                warningDiv.className = 'bg-amber-50 rounded-2xl p-4 border border-amber-100 col-span-2 mt-3';
+                warningDiv.innerHTML = `
+                    <div class="flex gap-3 items-start">
+                        <span class="text-xl">⚠️</span>
+                        <div class="text-sm">
+                            <p class="font-medium text-amber-700 mb-1">Téléchargement en ${numChunks} parties</p>
+                            <p class="text-stone-500">Pour éviter de saturer ton téléphone, tes souvenirs seront téléchargés en plusieurs ZIPs. Accepte les téléchargements multiples si demandé.</p>
+                        </div>
+                    </div>
+                `;
+                fileDetails.appendChild(warningDiv);
+            }
 
             resultSection.classList.remove('hidden');
             resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -704,145 +735,224 @@
                 clearInterval(countdownInterval);
                 adOverlay.classList.add('hidden');
                 document.body.style.overflow = '';
-                startBatchDownload();
+                startChunkedDownload();
             }, 3000);
         }
 
         // =============================================
-        // TÉLÉCHARGEMENT PAR LOTS (BATCH FETCH)
+        // TÉLÉCHARGEMENT PAR LOTS AVEC CHUNKING (MEMORY-SAFE)
         // =============================================
 
-        async function startBatchDownload() {
+        async function startChunkedDownload() {
             downloadOverlay.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
             corsErrors = 0;
+            downloadStartTime = Date.now();
+            totalSuccessful = 0;
 
-            const newZip = new JSZip();
-            const total = extractedUrls.length;
-            let processed = 0;
-            let successful = 0;
+            // Calculer le nombre de chunks
+            totalChunks = Math.ceil(extractedUrls.length / CHUNK_SIZE);
+            currentChunk = 0;
 
-            // Traitement par lots
-            for (let i = 0; i < extractedUrls.length; i += BATCH_SIZE) {
-                const batch = extractedUrls.slice(i, i + BATCH_SIZE);
+            const totalFiles = extractedUrls.length;
+            let globalProcessed = 0;
 
-                const results = await Promise.allSettled(
-                    batch.map(async (item) => {
-                        try {
-                            currentFile.textContent = `Memory #${item.index}`;
+            // Traiter chaque chunk séquentiellement
+            for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                currentChunk = chunkIndex + 1;
+                const chunkStart = chunkIndex * CHUNK_SIZE;
+                const chunkEnd = Math.min(chunkStart + CHUNK_SIZE, extractedUrls.length);
+                const chunkUrls = extractedUrls.slice(chunkStart, chunkEnd);
 
-                            // Essayer d'abord en mode normal
-                            let response = await fetch(item.url, {
-                                method: 'GET',
-                                mode: 'cors',
-                                credentials: 'omit'
-                            });
+                downloadTitle.textContent = `Partie ${currentChunk}/${totalChunks}`;
+                downloadEmoji.textContent = '📥';
 
-                            // Si échec, essayer avec POST (format Snapchat)
-                            if (!response.ok) {
-                                response = await fetch(item.url, {
-                                    method: 'POST',
-                                    mode: 'cors',
-                                    credentials: 'omit',
-                                    headers: {
-                                        'Content-Type': 'application/x-www-form-urlencoded'
-                                    }
-                                });
-                            }
+                // Créer un nouveau ZIP pour ce chunk uniquement
+                let chunkZip = new JSZip();
+                let chunkSuccessful = 0;
 
-                            if (response.ok) {
-                                const blob = await response.blob();
+                // Télécharger les fichiers de ce chunk par petits groupes parallèles
+                for (let i = 0; i < chunkUrls.length; i += PARALLEL_DOWNLOADS) {
+                    const batch = chunkUrls.slice(i, i + PARALLEL_DOWNLOADS);
 
-                                // Déterminer l'extension
-                                const contentType = response.headers.get('content-type') || '';
-                                let ext = '.jpg';
-                                if (contentType.includes('video') || contentType.includes('mp4')) {
-                                    ext = '.mp4';
-                                } else if (contentType.includes('png')) {
-                                    ext = '.png';
-                                } else if (contentType.includes('mov') || contentType.includes('quicktime')) {
-                                    ext = '.mov';
-                                }
+                    const results = await Promise.allSettled(
+                        batch.map(item => downloadSingleFile(item))
+                    );
 
-                                // Nom du fichier
-                                const date = new Date();
-                                const fileName = `Memory_${String(item.index).padStart(4, '0')}${ext}`;
+                    // Traiter les résultats
+                    for (const result of results) {
+                        globalProcessed++;
 
-                                return { fileName, blob, success: true };
-                            } else {
-                                throw new Error(`HTTP ${response.status}`);
-                            }
-                        } catch (error) {
-                            console.error(`Erreur pour #${item.index}:`, error);
-                            if (error.message.includes('CORS') || error.name === 'TypeError') {
-                                corsErrors++;
-                            }
-                            return { success: false, index: item.index };
+                        if (result.status === 'fulfilled' && result.value.success) {
+                            // Ajouter au ZIP du chunk
+                            chunkZip.file(result.value.fileName, result.value.blob);
+                            chunkSuccessful++;
+                            totalSuccessful++;
+
+                            // Libérer immédiatement la mémoire du blob
+                            result.value.blob = null;
                         }
-                    })
-                );
 
-                // Ajouter les fichiers réussis au ZIP
-                for (const result of results) {
-                    processed++;
-
-                    if (result.status === 'fulfilled' && result.value.success) {
-                        newZip.file(result.value.fileName, result.value.blob);
-                        successful++;
+                        // Mise à jour de la progression globale
+                        updateChunkedProgress(globalProcessed, totalFiles, currentChunk, totalChunks, chunkSuccessful);
                     }
 
-                    // Mise à jour de la progression
-                    const percent = Math.round((processed / total) * 100);
-                    downloadBar.style.width = `${percent}%`;
-                    downloadCount.textContent = `${processed} / ${total}`;
-                    downloadPercent.textContent = `${percent}%`;
-                    downloadStatus.textContent = `Récupération : ${successful} réussis`;
+                    // Vérifier si trop d'erreurs CORS
+                    if (corsErrors > 10 && globalProcessed < totalFiles / 3) {
+                        downloadOverlay.classList.add('hidden');
+                        document.body.style.overflow = '';
+                        corsErrorSection.classList.remove('hidden');
+                        corsErrorSection.scrollIntoView({ behavior: 'smooth' });
+                        return;
+                    }
                 }
 
-                // Vérifier si trop d'erreurs CORS
-                if (corsErrors > 5 && processed < total / 2) {
-                    downloadOverlay.classList.add('hidden');
-                    document.body.style.overflow = '';
-                    corsErrorSection.classList.remove('hidden');
-                    corsErrorSection.scrollIntoView({ behavior: 'smooth' });
-                    return;
+                // Générer et sauvegarder le ZIP de ce chunk
+                if (chunkSuccessful > 0) {
+                    downloadStatus.textContent = `Sauvegarde partie ${currentChunk}/${totalChunks}...`;
+                    downloadEmoji.textContent = '📦';
+
+                    const blob = await chunkZip.generateAsync({
+                        type: 'blob',
+                        compression: 'STORE'  // Pas de compression = rapide
+                    });
+
+                    // Télécharger immédiatement ce chunk
+                    const now = new Date();
+                    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+                    const fileName = totalChunks > 1
+                        ? `SaveMySnaps_${dateStr}_Partie${currentChunk}sur${totalChunks}.zip`
+                        : `SaveMySnaps_${dateStr}_${chunkSuccessful}memories.zip`;
+
+                    saveAs(blob, fileName);
+
+                    console.log(`✅ Chunk ${currentChunk}/${totalChunks} sauvegardé: ${chunkSuccessful} fichiers`);
+                }
+
+                // LIBÉRATION MÉMOIRE CRITIQUE
+                chunkZip = null;
+
+                // Petite pause pour laisser le navigateur respirer
+                if (chunkIndex < totalChunks - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
             }
 
             // Finalisation
-            if (successful > 0) {
-                downloadTitle.textContent = 'Création du ZIP...';
-                downloadEmoji.textContent = '📦';
-                downloadStatus.textContent = 'Compression des fichiers';
+            finishChunkedDownload();
+        }
 
-                const blob = await newZip.generateAsync({
-                    type: 'blob',
-                    compression: 'DEFLATE',
-                    compressionOptions: { level: 6 }
+        // =============================================
+        // TÉLÉCHARGEMENT D'UN FICHIER INDIVIDUEL
+        // =============================================
+
+        async function downloadSingleFile(item) {
+            try {
+                // Essayer d'abord en mode GET
+                let response = await fetch(item.url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit'
                 });
 
-                const now = new Date();
-                const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-                saveAs(blob, `SaveMySnaps_${dateStr}_${successful}memories.zip`);
+                // Si échec, essayer avec POST (format Snapchat signé)
+                if (!response.ok) {
+                    response = await fetch(item.url, {
+                        method: 'POST',
+                        mode: 'cors',
+                        credentials: 'omit',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        }
+                    });
+                }
 
-                downloadTitle.textContent = 'Terminé !';
-                downloadEmoji.textContent = '✅';
-                downloadStatus.textContent = `${successful} Memories sauvegardés`;
+                if (response.ok) {
+                    const blob = await response.blob();
 
-                setTimeout(() => {
-                    downloadOverlay.classList.add('hidden');
-                    document.body.style.overflow = '';
+                    // Déterminer l'extension depuis le content-type
+                    const contentType = response.headers.get('content-type') || '';
+                    let ext = '.jpg';
+                    if (contentType.includes('video') || contentType.includes('mp4')) {
+                        ext = '.mp4';
+                    } else if (contentType.includes('png')) {
+                        ext = '.png';
+                    } else if (contentType.includes('mov') || contentType.includes('quicktime')) {
+                        ext = '.mov';
+                    }
 
-                    downloadBtn.innerHTML = '✓ Téléchargement terminé !';
-                    downloadBtn.classList.remove('btn-pulse');
-                    downloadBtn.disabled = true;
-                    downloadBtn.classList.add('opacity-60', 'cursor-not-allowed');
-                }, 2000);
+                    const fileName = `Memory_${String(item.index).padStart(4, '0')}${ext}`;
+                    return { fileName, blob, success: true };
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.name === 'TypeError') {
+                    corsErrors++;
+                }
+                return { success: false, index: item.index };
+            }
+        }
+
+        // =============================================
+        // MISE À JOUR PROGRESSION AVEC CHUNKS
+        // =============================================
+
+        function updateChunkedProgress(globalProcessed, totalFiles, currentChunk, totalChunks, chunkSuccessful) {
+            const percent = Math.round((globalProcessed / totalFiles) * 100);
+
+            // Calcul du temps écoulé et estimation
+            const elapsed = (Date.now() - downloadStartTime) / 1000;
+            const speed = globalProcessed / elapsed;
+            const remaining = totalFiles - globalProcessed;
+            const eta = remaining > 0 ? Math.round(remaining / speed) : 0;
+
+            // Mise à jour de l'UI
+            downloadBar.style.width = `${percent}%`;
+            downloadCount.textContent = `${globalProcessed} / ${totalFiles}`;
+            downloadPercent.textContent = `${percent}%`;
+
+            // Afficher le statut avec chunk info
+            if (eta > 60) {
+                downloadStatus.textContent = `Partie ${currentChunk}/${totalChunks} • ${chunkSuccessful} OK • ~${Math.round(eta / 60)}min`;
             } else {
+                downloadStatus.textContent = `Partie ${currentChunk}/${totalChunks} • ${chunkSuccessful} OK • ~${eta}s`;
+            }
+
+            currentFile.textContent = `📦 ZIP ${currentChunk}/${totalChunks} en cours...`;
+        }
+
+        // =============================================
+        // FINALISATION DU TÉLÉCHARGEMENT CHUNKÉ
+        // =============================================
+
+        function finishChunkedDownload() {
+            const totalTime = Math.round((Date.now() - downloadStartTime) / 1000);
+
+            downloadTitle.textContent = 'Terminé !';
+            downloadEmoji.textContent = '✅';
+
+            if (totalChunks > 1) {
+                downloadStatus.textContent = `${totalSuccessful} Memories en ${totalChunks} ZIPs (${totalTime}s)`;
+                currentFile.textContent = `Vérifie ton dossier Téléchargements 📂`;
+            } else {
+                downloadStatus.textContent = `${totalSuccessful} Memories en ${totalTime}s`;
+                currentFile.textContent = `Téléchargement terminé !`;
+            }
+
+            setTimeout(() => {
                 downloadOverlay.classList.add('hidden');
                 document.body.style.overflow = '';
-                corsErrorSection.classList.remove('hidden');
-            }
+
+                if (totalChunks > 1) {
+                    downloadBtn.innerHTML = `✓ ${totalChunks} ZIPs téléchargés !`;
+                } else {
+                    downloadBtn.innerHTML = '✓ Téléchargement terminé !';
+                }
+                downloadBtn.classList.remove('btn-pulse');
+                downloadBtn.disabled = true;
+                downloadBtn.classList.add('opacity-60', 'cursor-not-allowed');
+            }, 2500);
         }
 
         // =============================================
@@ -871,6 +981,10 @@
         function resetState() {
             extractedUrls = [];
             corsErrors = 0;
+            downloadStartTime = 0;
+            totalSuccessful = 0;
+            totalChunks = 0;
+            currentChunk = 0;
 
             errorSection.classList.add('hidden');
             resultSection.classList.add('hidden');
@@ -900,8 +1014,8 @@
         // LOG DE DÉVELOPPEMENT
         // =============================================
 
-        console.log('%c📸 SaveMySnaps - Link Extractor v2.0', 'font-size: 16px; font-weight: bold; color: #44403c;');
-        console.log('%cExtracts download links from Snapchat exports', 'color: #a8a29e;');
+        console.log('%c📸 SaveMySnaps - Link Extractor v4.0 CHUNKED', 'font-size: 16px; font-weight: bold; color: #44403c;');
+        console.log(`%c📦 Stratégie: ${CHUNK_SIZE} fichiers/ZIP, ${PARALLEL_DOWNLOADS}x parallèle, STORE compression`, 'color: #fb923c;');
     </script>
 </body>
 
