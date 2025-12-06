@@ -8,7 +8,7 @@
     <meta name="description"
         content="Récupère facilement tes Memories Snapchat dans ta galerie. Outil gratuit, traitement 100% local et sécurisé.">
 
-    <script>(function (s) { s.dataset.zone = '10285613', s.src = 'https://gizokraijaw.net/vignette.min.js' })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <script src="https://quge5.com/88/tag.min.js" data-zone="190828" async data-cfasync="false"></script>
     <!-- =============================================
          LIBRAIRIES CDN
          ============================================= -->
@@ -277,12 +277,12 @@
                 <div class="text-center mb-6">
                     <div
                         class="w-20 h-20 mx-auto bg-green-50 rounded-full flex items-center justify-center mb-4 border border-green-100">
-                        <span class="text-4xl">🎉</span>
+                        <span class="text-4xl">🔗</span>
                     </div>
                     <p class="text-3xl font-bold text-stone-800 mb-1">
                         <span id="fileCount">0</span> Memories
                     </p>
-                    <p class="text-stone-500">trouvés dans ton export</p>
+                    <p class="text-stone-500">liens détectés dans ton export</p>
                 </div>
 
                 <!-- Détails des fichiers -->
@@ -305,7 +305,7 @@
                 <!-- Bouton Magique -->
                 <button id="downloadBtn"
                     class="btn-pulse w-full bg-stone-800 hover:bg-stone-700 text-stone-50 font-semibold text-lg py-4 rounded-full transition-all duration-300 active:scale-[0.98] shadow-lg shadow-stone-400/30">
-                    Télécharger mes souvenirs
+                    🔓 Débloquer & Télécharger
                 </button>
 
                 <!-- Mention légale -->
@@ -328,6 +328,39 @@
                 <button id="retryBtn"
                     class="mt-4 bg-stone-100 text-stone-700 font-medium py-3 px-6 rounded-full hover:bg-stone-200 transition-all duration-300">
                     Réessayer
+                </button>
+            </div>
+        </section>
+
+        <!-- =============================================
+             MESSAGE ERREUR CORS (Caché par défaut)
+             ============================================= -->
+        <section id="corsErrorSection" class="hidden">
+            <div class="bg-amber-50 border border-amber-200 rounded-3xl p-5">
+                <div class="text-center mb-4">
+                    <div class="w-16 h-16 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-3">
+                        <span class="text-3xl">🔒</span>
+                    </div>
+                    <p class="text-amber-700 font-semibold mb-2">Snapchat bloque le téléchargement</p>
+                    <p class="text-stone-500 text-sm">Les serveurs de Snapchat empêchent le téléchargement direct depuis
+                        un navigateur.</p>
+                </div>
+
+                <div class="space-y-3 text-sm">
+                    <div class="bg-white rounded-2xl p-4 border border-amber-100">
+                        <p class="font-medium text-stone-700 mb-2">💻 Sur ordinateur :</p>
+                        <p class="text-stone-500">Utilise une extension comme "CORS Unblock" puis réessaie.</p>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 border border-amber-100">
+                        <p class="font-medium text-stone-700 mb-2">📱 Sur mobile :</p>
+                        <p class="text-stone-500">Ouvre le fichier memories_history.html dans ton ZIP et clique
+                            manuellement sur chaque lien "Download".</p>
+                    </div>
+                </div>
+
+                <button id="retryCorsBtn"
+                    class="mt-4 w-full bg-stone-800 text-stone-50 font-medium py-3 rounded-full hover:bg-stone-700 transition-all duration-300">
+                    Réessayer quand même
                 </button>
             </div>
         </section>
@@ -370,43 +403,49 @@
     </div>
 
     <!-- =============================================
-         OVERLAY DE GÉNÉRATION DU ZIP (Caché par défaut)
+         OVERLAY DE TÉLÉCHARGEMENT (Caché par défaut)
          ============================================= -->
-    <div id="generatingOverlay"
+    <div id="downloadOverlay"
         class="hidden fixed inset-0 z-50 bg-stone-100/95 overlay-blur flex items-center justify-center">
-        <div class="text-center p-8 max-w-sm">
+        <div class="text-center p-8 max-w-sm w-full">
             <div class="w-24 h-24 mx-auto bg-orange-100 rounded-full flex items-center justify-center mb-6">
-                <span class="text-5xl animate-spin">⚙️</span>
+                <span class="text-5xl" id="downloadEmoji">📥</span>
             </div>
-            <p class="text-xl font-semibold mb-2 text-stone-700">Préparation en cours...</p>
-            <p class="text-stone-500 mb-4" id="generatingStatus">Compression des fichiers</p>
+            <p class="text-xl font-semibold mb-2 text-stone-700" id="downloadTitle">Récupération en cours...</p>
+            <p class="text-stone-500 mb-4" id="downloadStatus">Connexion aux serveurs Snapchat</p>
 
-            <!-- Barre de progression -->
-            <div class="w-64 mx-auto">
-                <div class="h-2 bg-stone-200 rounded-full overflow-hidden">
-                    <div id="generatingBar"
-                        class="progress-bar h-full bg-gradient-to-r from-orange-300 to-stone-400 rounded-full"
+            <!-- Barre de progression détaillée -->
+            <div class="w-full mx-auto mb-4">
+                <div class="h-3 bg-stone-200 rounded-full overflow-hidden">
+                    <div id="downloadBar"
+                        class="progress-bar h-full bg-gradient-to-r from-orange-300 to-orange-500 rounded-full"
                         style="width: 0%"></div>
                 </div>
-                <p class="text-stone-500 text-sm mt-2" id="generatingPercent">0%</p>
+                <div class="flex justify-between mt-2 text-sm">
+                    <span class="text-stone-500" id="downloadCount">0 / 0</span>
+                    <span class="text-stone-500" id="downloadPercent">0%</span>
+                </div>
             </div>
+
+            <!-- Fichier en cours -->
+            <p class="text-stone-400 text-xs truncate" id="currentFile">-</p>
         </div>
     </div>
 
     <!-- =============================================
-         JAVASCRIPT - LOGIQUE PRINCIPALE
+         JAVASCRIPT - LOGIQUE PRINCIPALE (LINK EXTRACTOR)
          ============================================= -->
     <script>
         // =============================================
         // VARIABLES GLOBALES
         // =============================================
 
-        // Stockage des fichiers nettoyés après analyse
-        let cleanedFiles = [];
-        // Référence au fichier ZIP original
-        let originalZip = null;
-        // Extensions autorisées pour les médias
-        const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.mp4', '.mov'];
+        // Stockage des URLs extraites
+        let extractedUrls = [];
+        // Nombre de téléchargements simultanés
+        const BATCH_SIZE = 3;
+        // Compteur d'erreurs CORS
+        let corsErrors = 0;
 
         // =============================================
         // ÉLÉMENTS DU DOM
@@ -429,19 +468,24 @@
         const errorTitle = document.getElementById('errorTitle');
         const errorMessage = document.getElementById('errorMessage');
         const retryBtn = document.getElementById('retryBtn');
+        const corsErrorSection = document.getElementById('corsErrorSection');
+        const retryCorsBtn = document.getElementById('retryCorsBtn');
         const adOverlay = document.getElementById('adOverlay');
         const adCountdown = document.getElementById('adCountdown');
         const adProgress = document.getElementById('adProgress');
-        const generatingOverlay = document.getElementById('generatingOverlay');
-        const generatingStatus = document.getElementById('generatingStatus');
-        const generatingBar = document.getElementById('generatingBar');
-        const generatingPercent = document.getElementById('generatingPercent');
+        const downloadOverlay = document.getElementById('downloadOverlay');
+        const downloadTitle = document.getElementById('downloadTitle');
+        const downloadStatus = document.getElementById('downloadStatus');
+        const downloadBar = document.getElementById('downloadBar');
+        const downloadCount = document.getElementById('downloadCount');
+        const downloadPercent = document.getElementById('downloadPercent');
+        const downloadEmoji = document.getElementById('downloadEmoji');
+        const currentFile = document.getElementById('currentFile');
 
         // =============================================
         // GESTION DU DRAG & DROP
         // =============================================
 
-        // Empêcher le comportement par défaut pour le drag & drop
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, preventDefaults, false);
             document.body.addEventListener(eventName, preventDefaults, false);
@@ -452,7 +496,6 @@
             e.stopPropagation();
         }
 
-        // Effet visuel lors du survol
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => {
                 dropZone.classList.add('dragover');
@@ -465,7 +508,6 @@
             }, false);
         });
 
-        // Traitement du fichier déposé
         dropZone.addEventListener('drop', handleDrop, false);
         dropZone.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', handleFileSelect);
@@ -485,95 +527,118 @@
         }
 
         // =============================================
-        // TRAITEMENT DU FICHIER ZIP
+        // TRAITEMENT DU FICHIER ZIP (EXTRACTION DES LIENS)
         // =============================================
 
         async function processFile(file) {
-            // Réinitialiser l'état
             resetState();
 
-            // Vérifier que c'est bien un fichier ZIP
             if (!file.name.toLowerCase().endsWith('.zip')) {
-                showError(
-                    'Format non supporté',
-                    'Merci d\'importer un fichier .ZIP. Tu as sélectionné : ' + file.name
-                );
+                showError('Format non supporté', 'Merci d\'importer un fichier .ZIP');
                 return;
             }
 
-            // Afficher l'état de chargement
             uploadContent.classList.add('hidden');
             loadingContent.classList.remove('hidden');
             progressContainer.classList.remove('hidden');
 
             try {
-                // Charger le fichier ZIP
                 updateProgress('Lecture du fichier ZIP...', 10);
                 const zip = await JSZip.loadAsync(file);
-                originalZip = zip;
 
-                // Scanner les fichiers
-                updateProgress('Analyse des fichiers...', 30);
-                await scanZipFiles(zip);
+                // Chercher le fichier memories_history.html
+                updateProgress('Recherche de memories_history.html...', 30);
 
-                // Afficher les résultats
-                if (cleanedFiles.length > 0) {
-                    showResults();
-                } else {
-                    showError(
-                        'Aucun média trouvé',
-                        'Ce ZIP ne contient pas de photos ou vidéos (JPG, PNG, MP4, MOV).'
-                    );
+                let memoriesHtml = null;
+                const possiblePaths = [
+                    'html/memories_history.html',
+                    'memories_history.html',
+                    'Memories/memories_history.html'
+                ];
+
+                for (const path of possiblePaths) {
+                    if (zip.files[path]) {
+                        memoriesHtml = await zip.files[path].async('string');
+                        break;
+                    }
                 }
 
+                // Si pas trouvé, chercher récursivement
+                if (!memoriesHtml) {
+                    for (const [path, zipEntry] of Object.entries(zip.files)) {
+                        if (path.toLowerCase().includes('memories_history.html') && !zipEntry.dir) {
+                            memoriesHtml = await zipEntry.async('string');
+                            break;
+                        }
+                    }
+                }
+
+                if (!memoriesHtml) {
+                    showError(
+                        'Fichier introuvable',
+                        'Le fichier memories_history.html n\'a pas été trouvé dans ce ZIP. Assure-toi d\'avoir exporté tes "Memories" depuis Snapchat.'
+                    );
+                    return;
+                }
+
+                // Extraire les URLs
+                updateProgress('Extraction des liens...', 60);
+                extractedUrls = extractDownloadUrls(memoriesHtml);
+
+                if (extractedUrls.length === 0) {
+                    showError(
+                        'Aucun lien trouvé',
+                        'Aucun lien de téléchargement n\'a été détecté dans le fichier.'
+                    );
+                    return;
+                }
+
+                updateProgress('Analyse terminée !', 100);
+                showResults();
+
             } catch (error) {
-                console.error('Erreur lors du traitement:', error);
-                showError(
-                    'Erreur de lecture',
-                    'Impossible de lire ce fichier ZIP. Vérifie qu\'il n\'est pas corrompu.'
-                );
+                console.error('Erreur:', error);
+                showError('Erreur de lecture', 'Impossible de lire ce fichier ZIP.');
             }
         }
 
         // =============================================
-        // ANALYSE DU CONTENU DU ZIP
+        // EXTRACTION DES URLS (REGEX)
         // =============================================
 
-        async function scanZipFiles(zip) {
-            cleanedFiles = [];
-            const files = Object.keys(zip.files);
-            const totalFiles = files.length;
-            let processed = 0;
+        function extractDownloadUrls(htmlContent) {
+            const urls = [];
 
-            for (const filePath of files) {
-                const zipEntry = zip.files[filePath];
+            // Regex pour trouver les appels downloadMemories('URL', ...)
+            // Format: downloadMemories('https://...', ...)
+            const regex = /downloadMemories\s*\(\s*['"]([^'"]+)['"]/g;
+            let match;
 
-                // Ignorer les dossiers
-                if (zipEntry.dir) {
-                    processed++;
-                    continue;
-                }
-
-                // Extraire l'extension
-                const fileName = filePath.split('/').pop();
-                const extension = '.' + fileName.split('.').pop().toLowerCase();
-
-                // Vérifier si c'est un média autorisé
-                if (ALLOWED_EXTENSIONS.includes(extension)) {
-                    cleanedFiles.push({
-                        originalPath: filePath,
-                        fileName: fileName,
-                        extension: extension
-                    });
-                }
-
-                // Mettre à jour la progression
-                processed++;
-                const percent = 30 + Math.round((processed / totalFiles) * 60);
-                updateProgress(`Scan: ${processed}/${totalFiles} fichiers`, percent);
+            while ((match = regex.exec(htmlContent)) !== null) {
+                let url = match[1];
+                // Décoder les entités HTML (&amp; -> &)
+                url = url.replace(/&amp;/g, '&');
+                urls.push({
+                    url: url,
+                    index: urls.length + 1
+                });
             }
 
-            updateProgress('Analyse terminée !', 100);
+            // Méthode alternative : chercher les liens directs Snapchat
+            if (urls.length === 0) {
+                const altRegex = /href=["']?(https:\/\/[^"'\s]*snapchat\.com[^"'\s]*download[^"'\s]*)["']?/gi;
+                while ((match = altRegex.exec(htmlContent)) !== null) {
+                    let url = match[1];
+                    url = url.replace(/&amp;/g, '&');
+                    urls.push({
+                        url: url,
+                        index: urls.length + 1
+                    });
+                }
+            }
+
+            console.log(`${urls.length} URLs extraites`);
+            return urls;
         }
 
         // =============================================
@@ -581,67 +646,50 @@
         // =============================================
 
         function showResults() {
-            // Masquer le chargement
             loadingContent.classList.add('hidden');
             progressContainer.classList.add('hidden');
             uploadContent.classList.add('hidden');
 
-            // Compter les types de fichiers
-            const stats = {
-                photos: cleanedFiles.filter(f => ['.jpg', '.jpeg', '.png'].includes(f.extension)).length,
-                videos: cleanedFiles.filter(f => ['.mp4', '.mov'].includes(f.extension)).length
-            };
+            fileCount.textContent = extractedUrls.length;
 
-            // Afficher le nombre total
-            fileCount.textContent = cleanedFiles.length;
-
-            // Afficher les détails
             fileDetails.innerHTML = `
-                <div class="bg-stone-50 rounded-2xl p-4 text-center border border-stone-100">
-                    <p class="text-2xl mb-1">📸</p>
-                    <p class="text-xl font-bold text-stone-800">${stats.photos}</p>
-                    <p class="text-stone-500 text-sm">Photos</p>
-                </div>
-                <div class="bg-stone-50 rounded-2xl p-4 text-center border border-stone-100">
-                    <p class="text-2xl mb-1">🎬</p>
-                    <p class="text-xl font-bold text-stone-800">${stats.videos}</p>
-                    <p class="text-stone-500 text-sm">Vidéos</p>
+                <div class="bg-stone-50 rounded-2xl p-4 text-center border border-stone-100 col-span-2">
+                    <p class="text-2xl mb-1">🔗</p>
+                    <p class="text-xl font-bold text-stone-800">${extractedUrls.length}</p>
+                    <p class="text-stone-500 text-sm">Liens de téléchargement prêts</p>
                 </div>
             `;
 
-            // Afficher la section résultat
             resultSection.classList.remove('hidden');
-
-            // Scroller vers les résultats
             resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         // =============================================
-        // GESTION DE LA PUBLICITÉ SIMULÉE
+        // GESTION DE LA PUBLICITÉ
         // =============================================
 
         downloadBtn.addEventListener('click', showAd);
+        retryCorsBtn.addEventListener('click', () => {
+            corsErrorSection.classList.add('hidden');
+            showAd();
+        });
 
         function showAd() {
-            // Afficher l'overlay de pub
             adOverlay.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
 
-            // Démarrer le décompte
             let countdown = 3;
             adCountdown.textContent = countdown;
 
-            // Animation du cercle de progression (rayon 36, circonférence = 226.19)
             const circumference = 2 * Math.PI * 36;
             let progress = 0;
 
             const interval = setInterval(() => {
-                progress += (100 / 30); // 30 étapes pour 3 secondes
+                progress += (100 / 30);
                 const offset = circumference - (progress / 100) * circumference;
                 adProgress.style.strokeDashoffset = offset;
             }, 100);
 
-            // Décompte des secondes
             const countdownInterval = setInterval(() => {
                 countdown--;
                 if (countdown > 0) {
@@ -651,92 +699,149 @@
                 }
             }, 1000);
 
-            // Callback après 3 secondes
             setTimeout(() => {
                 clearInterval(interval);
                 clearInterval(countdownInterval);
                 adOverlay.classList.add('hidden');
                 document.body.style.overflow = '';
-
-                // Lancer la génération du ZIP
-                generateCleanedZip();
+                startBatchDownload();
             }, 3000);
         }
 
         // =============================================
-        // GÉNÉRATION DU ZIP NETTOYÉ
+        // TÉLÉCHARGEMENT PAR LOTS (BATCH FETCH)
         // =============================================
 
-        async function generateCleanedZip() {
-            // Afficher l'overlay de génération
-            generatingOverlay.classList.remove('hidden');
+        async function startBatchDownload() {
+            downloadOverlay.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
+            corsErrors = 0;
 
-            try {
-                // Créer un nouveau ZIP
-                const newZip = new JSZip();
-                const total = cleanedFiles.length;
-                let processed = 0;
+            const newZip = new JSZip();
+            const total = extractedUrls.length;
+            let processed = 0;
+            let successful = 0;
 
-                for (const fileInfo of cleanedFiles) {
-                    // Récupérer le contenu du fichier original
-                    const content = await originalZip.files[fileInfo.originalPath].async('blob');
+            // Traitement par lots
+            for (let i = 0; i < extractedUrls.length; i += BATCH_SIZE) {
+                const batch = extractedUrls.slice(i, i + BATCH_SIZE);
 
-                    // Ajouter au nouveau ZIP avec un nom simple (aplatissement)
-                    // Gérer les doublons en ajoutant un index si nécessaire
-                    let finalName = fileInfo.fileName;
-                    let counter = 1;
-                    while (newZip.files[finalName]) {
-                        const baseName = fileInfo.fileName.replace(fileInfo.extension, '');
-                        finalName = `${baseName}_${counter}${fileInfo.extension}`;
-                        counter++;
+                const results = await Promise.allSettled(
+                    batch.map(async (item) => {
+                        try {
+                            currentFile.textContent = `Memory #${item.index}`;
+
+                            // Essayer d'abord en mode normal
+                            let response = await fetch(item.url, {
+                                method: 'GET',
+                                mode: 'cors',
+                                credentials: 'omit'
+                            });
+
+                            // Si échec, essayer avec POST (format Snapchat)
+                            if (!response.ok) {
+                                response = await fetch(item.url, {
+                                    method: 'POST',
+                                    mode: 'cors',
+                                    credentials: 'omit',
+                                    headers: {
+                                        'Content-Type': 'application/x-www-form-urlencoded'
+                                    }
+                                });
+                            }
+
+                            if (response.ok) {
+                                const blob = await response.blob();
+
+                                // Déterminer l'extension
+                                const contentType = response.headers.get('content-type') || '';
+                                let ext = '.jpg';
+                                if (contentType.includes('video') || contentType.includes('mp4')) {
+                                    ext = '.mp4';
+                                } else if (contentType.includes('png')) {
+                                    ext = '.png';
+                                } else if (contentType.includes('mov') || contentType.includes('quicktime')) {
+                                    ext = '.mov';
+                                }
+
+                                // Nom du fichier
+                                const date = new Date();
+                                const fileName = `Memory_${String(item.index).padStart(4, '0')}${ext}`;
+
+                                return { fileName, blob, success: true };
+                            } else {
+                                throw new Error(`HTTP ${response.status}`);
+                            }
+                        } catch (error) {
+                            console.error(`Erreur pour #${item.index}:`, error);
+                            if (error.message.includes('CORS') || error.name === 'TypeError') {
+                                corsErrors++;
+                            }
+                            return { success: false, index: item.index };
+                        }
+                    })
+                );
+
+                // Ajouter les fichiers réussis au ZIP
+                for (const result of results) {
+                    processed++;
+
+                    if (result.status === 'fulfilled' && result.value.success) {
+                        newZip.file(result.value.fileName, result.value.blob);
+                        successful++;
                     }
 
-                    newZip.file(finalName, content);
-
-                    // Mettre à jour la progression
-                    processed++;
+                    // Mise à jour de la progression
                     const percent = Math.round((processed / total) * 100);
-                    generatingStatus.textContent = `${processed}/${total} fichiers`;
-                    generatingBar.style.width = `${percent}%`;
-                    generatingPercent.textContent = `${percent}%`;
+                    downloadBar.style.width = `${percent}%`;
+                    downloadCount.textContent = `${processed} / ${total}`;
+                    downloadPercent.textContent = `${percent}%`;
+                    downloadStatus.textContent = `Récupération : ${successful} réussis`;
                 }
 
-                // Générer le fichier ZIP final
-                generatingStatus.textContent = 'Finalisation...';
+                // Vérifier si trop d'erreurs CORS
+                if (corsErrors > 5 && processed < total / 2) {
+                    downloadOverlay.classList.add('hidden');
+                    document.body.style.overflow = '';
+                    corsErrorSection.classList.remove('hidden');
+                    corsErrorSection.scrollIntoView({ behavior: 'smooth' });
+                    return;
+                }
+            }
+
+            // Finalisation
+            if (successful > 0) {
+                downloadTitle.textContent = 'Création du ZIP...';
+                downloadEmoji.textContent = '📦';
+                downloadStatus.textContent = 'Compression des fichiers';
+
                 const blob = await newZip.generateAsync({
                     type: 'blob',
                     compression: 'DEFLATE',
                     compressionOptions: { level: 6 }
-                }, (metadata) => {
-                    const percent = Math.round(metadata.percent);
-                    generatingBar.style.width = `${percent}%`;
-                    generatingPercent.textContent = `${percent}%`;
                 });
 
-                // Télécharger le fichier
                 const now = new Date();
                 const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-                saveAs(blob, `SaveMySnaps_Memories_${dateStr}.zip`);
+                saveAs(blob, `SaveMySnaps_${dateStr}_${successful}memories.zip`);
 
-                // Masquer l'overlay
-                generatingOverlay.classList.add('hidden');
+                downloadTitle.textContent = 'Terminé !';
+                downloadEmoji.textContent = '✅';
+                downloadStatus.textContent = `${successful} Memories sauvegardés`;
+
+                setTimeout(() => {
+                    downloadOverlay.classList.add('hidden');
+                    document.body.style.overflow = '';
+
+                    downloadBtn.innerHTML = '✓ Téléchargement terminé !';
+                    downloadBtn.classList.remove('btn-pulse');
+                    downloadBtn.disabled = true;
+                    downloadBtn.classList.add('opacity-60', 'cursor-not-allowed');
+                }, 2000);
+            } else {
+                downloadOverlay.classList.add('hidden');
                 document.body.style.overflow = '';
-
-                // Message de succès
-                downloadBtn.innerHTML = '✓ Téléchargement lancé !';
-                downloadBtn.classList.remove('btn-pulse');
-                downloadBtn.disabled = true;
-                downloadBtn.classList.add('opacity-60', 'cursor-not-allowed');
-
-            } catch (error) {
-                console.error('Erreur lors de la génération:', error);
-                generatingOverlay.classList.add('hidden');
-                document.body.style.overflow = '';
-                showError(
-                    'Erreur de génération',
-                    'Impossible de créer le fichier ZIP. Réessaie.'
-                );
+                corsErrorSection.classList.remove('hidden');
             }
         }
 
@@ -752,54 +857,51 @@
         }
 
         function showError(title, message) {
-            // Masquer les autres sections
             loadingContent.classList.add('hidden');
             progressContainer.classList.add('hidden');
             resultSection.classList.add('hidden');
+            corsErrorSection.classList.add('hidden');
             uploadContent.classList.remove('hidden');
 
-            // Afficher l'erreur
             errorTitle.textContent = title;
             errorMessage.textContent = message;
             errorSection.classList.remove('hidden');
         }
 
         function resetState() {
-            // Réinitialiser toutes les variables et l'UI
-            cleanedFiles = [];
-            originalZip = null;
+            extractedUrls = [];
+            corsErrors = 0;
 
-            // Masquer les sections d'état
             errorSection.classList.add('hidden');
             resultSection.classList.add('hidden');
+            corsErrorSection.classList.add('hidden');
             loadingContent.classList.add('hidden');
             progressContainer.classList.add('hidden');
 
-            // Réafficher l'upload
             uploadContent.classList.remove('hidden');
-
-            // Réinitialiser la barre de progression
             progressBar.style.width = '0%';
+            downloadBar.style.width = '0%';
 
-            // Réinitialiser le bouton de téléchargement
-            downloadBtn.innerHTML = 'Télécharger mes souvenirs';
+            downloadBtn.innerHTML = '🔓 Débloquer & Télécharger';
             downloadBtn.classList.add('btn-pulse');
             downloadBtn.disabled = false;
             downloadBtn.classList.remove('opacity-60', 'cursor-not-allowed');
 
-            // Réinitialiser l'input file
+            downloadTitle.textContent = 'Récupération en cours...';
+            downloadEmoji.textContent = '📥';
+            downloadStatus.textContent = 'Connexion aux serveurs Snapchat';
+
             fileInput.value = '';
         }
 
-        // Bouton Réessayer
         retryBtn.addEventListener('click', resetState);
 
         // =============================================
-        // MESSAGE DE DÉVELOPPEMENT (à retirer en production)
+        // LOG DE DÉVELOPPEMENT
         // =============================================
 
-        console.log('%c📸 SaveMySnaps', 'font-size: 20px; font-weight: bold; color: #44403c;');
-        console.log('%cTraitement 100% local', 'color: #a8a29e;');
+        console.log('%c📸 SaveMySnaps - Link Extractor v2.0', 'font-size: 16px; font-weight: bold; color: #44403c;');
+        console.log('%cExtracts download links from Snapchat exports', 'color: #a8a29e;');
     </script>
 </body>
 
