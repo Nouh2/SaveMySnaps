@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SaveMySnaps - Récupère tes Memories Snapchat</title>
+    <meta name="description"
+        content="Récupère facilement tes Memories Snapchat dans ta galerie. Outil gratuit, traitement 100% local et sécurisé.">
+
+    <!-- =============================================
+         LIBRAIRIES CDN
+         ============================================= -->
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter pour un style épuré -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- JSZip pour le traitement des fichiers ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- FileSaver.js pour le téléchargement -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <!-- =============================================
+         STYLES PERSONNALISÉS
+         ============================================= -->
+    <style>
+        /* Police personnalisée */
+        * {
+            font-family: 'Inter', system-ui, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            min-height: 100dvh;
+            overscroll-behavior: none;
+        }
+
+        /* Animation douce pour le bouton principal */
+        @keyframes gentle-pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        .btn-pulse {
+            animation: gentle-pulse 3s ease-in-out infinite;
+        }
+
+        /* Animation de chargement */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Zone de drop stylisée */
+        .drop-zone {
+            border: 2px dashed;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.dragover {
+            border-color: #fb923c;
+            background-color: rgba(251, 146, 60, 0.05);
+            transform: scale(1.01);
+        }
+
+        /* Accordéon personnalisé */
+        details summary {
+            cursor: pointer;
+            list-style: none;
+        }
+
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        details[open] summary .chevron {
+            transform: rotate(180deg);
+        }
+
+        .chevron {
+            transition: transform 0.3s ease;
+        }
+
+        /* Overlay avec blur */
+        .overlay-blur {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* Barre de progression */
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+
+        /* Scrollbar personnalisée style minimaliste */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f5f5f4;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d6d3d1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a29e;
+        }
+    </style>
+</head>
+
+<body class="bg-stone-100 text-stone-800">
+
+    <!-- =============================================
+         SECTION A : HEADER
+         ============================================= -->
+    <header class="sticky top-0 z-40 bg-stone-100/90 backdrop-blur-md border-b border-stone-200">
+        <div class="max-w-lg mx-auto px-4 py-4">
+            <div class="text-center">
+                <!-- Logo et Titre -->
+                <h1 class="text-2xl font-bold flex items-center justify-center gap-2 text-stone-800">
+                    <span class="text-3xl opacity-80">👻</span>
+                    <span>SaveMySnaps</span>
+                </h1>
+                <!-- Sous-titre accrocheur -->
+                <p class="text-stone-500 text-sm mt-1">
+                    Récupère tes Memories dans ta galerie
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <!-- =============================================
+         CONTENU PRINCIPAL
+         ============================================= -->
+    <main class="max-w-lg mx-auto px-4 py-6 space-y-5 pb-24">
+
+        <!-- =============================================
+             SECTION B : TUTORIEL "COMMENT FAIRE ?"
+             ============================================= -->
+        <section>
+            <details
+                class="bg-stone-50 rounded-3xl overflow-hidden border border-stone-200 shadow-lg shadow-stone-300/30 transition-all duration-300"
+                open>
+                <summary class="p-5 flex items-center justify-between hover:bg-stone-100 transition-all duration-300">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="bg-orange-100 text-orange-500 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">1</span>
+                        <span class="font-semibold text-stone-700">Comment obtenir mes données ?</span>
+                    </div>
+                    <svg class="chevron w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </summary>
+
+                <div class="px-5 pb-5 space-y-4">
+                    <!-- Étapes du tutoriel avec emojis -->
+                    <div class="space-y-3">
+                        <div
+                            class="flex gap-3 items-start p-4 bg-white rounded-2xl border border-stone-100 transition-all duration-300">
+                            <span class="text-xl">⚙️</span>
+                            <p class="text-sm text-stone-600">Ouvre les <strong class="text-stone-800">Réglages</strong>
+                                Snapchat</p>
+                        </div>
+
+                        <div
+                            class="flex gap-3 items-start p-4 bg-white rounded-2xl border border-stone-100 transition-all duration-300">
+                            <span class="text-xl">📜</span>
+                            <p class="text-sm text-stone-600">Scrolle vers <strong class="text-stone-800">"Mes
+                                    Données"</strong></p>
+                        </div>
+
+                        <div
+                            class="flex gap-3 items-start p-4 bg-white rounded-2xl border border-stone-100 transition-all duration-300">
+                            <span class="text-xl">✅</span>
+                            <p class="text-sm text-stone-600">Coche uniquement <strong
+                                    class="text-stone-800">"Memories"</strong></p>
+                        </div>
+
+                        <div
+                            class="flex gap-3 items-start p-4 bg-white rounded-2xl border border-stone-100 transition-all duration-300">
+                            <span class="text-xl">📩</span>
+                            <p class="text-sm text-stone-600">Entre ton email, tu recevras le <strong
+                                    class="text-stone-800">lien</strong> sous 24h</p>
+                        </div>
+                    </div>
+
+                    <!-- Bouton CTA vers Snapchat -->
+                    <a href="https://accounts.snapchat.com/accounts/downloadmydata" target="_blank"
+                        rel="noopener noreferrer"
+                        class="block w-full bg-stone-800 hover:bg-stone-700 text-stone-50 text-center py-4 rounded-full font-medium transition-all duration-300 shadow-md shadow-stone-400/20">
+                        Accéder à Snapchat →
+                    </a>
+                </div>
+            </details>
+        </section>
+
+        <!-- =============================================
+             SECTION C : UPLOAD ET TRAITEMENT
+             ============================================= -->
+        <section>
+            <div class="bg-white rounded-3xl p-5 border border-stone-200 shadow-xl shadow-stone-300/50">
+                <!-- Titre de la section -->
+                <div class="flex items-center gap-3 mb-5">
+                    <span
+                        class="bg-orange-100 text-orange-500 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">2</span>
+                    <span class="font-semibold text-stone-700">Importe ton fichier ZIP</span>
+                </div>
+
+                <!-- Zone de Drop / Upload -->
+                <div id="dropZone"
+                    class="drop-zone border-stone-300 rounded-3xl p-8 text-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-all duration-300">
+                    <input type="file" id="fileInput" accept=".zip" class="hidden">
+
+                    <div id="uploadContent">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-stone-100 rounded-full flex items-center justify-center">
+                            <span class="text-3xl">📁</span>
+                        </div>
+                        <p class="font-medium text-stone-700 mb-1">Glisse ton fichier ici</p>
+                        <p class="text-stone-400 text-sm mb-4">ou clique pour sélectionner</p>
+                        <div
+                            class="inline-block bg-stone-800 hover:bg-stone-700 text-stone-50 font-medium py-3 px-6 rounded-full transition-all duration-300 shadow-md shadow-stone-400/20">
+                            Choisir un fichier
+                        </div>
+                    </div>
+
+                    <!-- État de chargement (caché par défaut) -->
+                    <div id="loadingContent" class="hidden">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
+                            <span class="text-3xl animate-spin">⚙️</span>
+                        </div>
+                        <p class="font-medium text-stone-700 mb-1">Analyse en cours...</p>
+                        <p class="text-stone-400 text-sm" id="loadingStatus">Lecture du fichier</p>
+                    </div>
+                </div>
+
+                <!-- Barre de progression (cachée par défaut) -->
+                <div id="progressContainer" class="hidden mt-4">
+                    <div class="flex justify-between text-sm text-stone-500 mb-2">
+                        <span id="progressText">Traitement...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="h-2 bg-stone-200 rounded-full overflow-hidden">
+                        <div id="progressBar"
+                            class="progress-bar h-full bg-gradient-to-r from-orange-300 to-stone-400 rounded-full"
+                            style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =============================================
+             SECTION D : RÉSULTAT & MONÉTISATION
+             (Cachée par défaut, affichée après le traitement)
+             ============================================= -->
+        <section id="resultSection" class="hidden">
+            <div class="bg-white rounded-3xl p-5 border border-stone-200 shadow-xl shadow-stone-300/50">
+                <!-- Résultat du scan -->
+                <div class="text-center mb-6">
+                    <div
+                        class="w-20 h-20 mx-auto bg-green-50 rounded-full flex items-center justify-center mb-4 border border-green-100">
+                        <span class="text-4xl">🎉</span>
+                    </div>
+                    <p class="text-3xl font-bold text-stone-800 mb-1">
+                        <span id="fileCount">0</span> Memories
+                    </p>
+                    <p class="text-stone-500">trouvés dans ton export</p>
+                </div>
+
+                <!-- Détails des fichiers -->
+                <div id="fileDetails" class="grid grid-cols-2 gap-3 mb-6">
+                    <!-- Rempli dynamiquement -->
+                </div>
+
+                <!-- Message spécifique iOS -->
+                <div class="bg-stone-50 rounded-2xl p-4 mb-6 border border-stone-100">
+                    <div class="flex gap-3 items-start">
+                        <span class="text-xl">📱</span>
+                        <div class="text-sm">
+                            <p class="font-medium text-stone-700 mb-1">Astuce iPhone</p>
+                            <p class="text-stone-500">Enregistre d'abord dans "Fichiers", puis sauvegarde dans ta
+                                Galerie.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bouton Magique -->
+                <button id="downloadBtn"
+                    class="btn-pulse w-full bg-stone-800 hover:bg-stone-700 text-stone-50 font-semibold text-lg py-4 rounded-full transition-all duration-300 active:scale-[0.98] shadow-lg shadow-stone-400/30">
+                    Télécharger mes souvenirs
+                </button>
+
+                <!-- Mention légale -->
+                <p class="text-center text-stone-400 text-xs mt-4">
+                    Une courte pub te sera présentée pour supporter le service
+                </p>
+            </div>
+        </section>
+
+        <!-- =============================================
+             MESSAGE D'ERREUR (Caché par défaut)
+             ============================================= -->
+        <section id="errorSection" class="hidden">
+            <div class="bg-red-50 border border-red-100 rounded-3xl p-5 text-center">
+                <div class="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-3">
+                    <span class="text-3xl">❌</span>
+                </div>
+                <p class="text-red-600 font-semibold mb-2" id="errorTitle">Erreur</p>
+                <p class="text-stone-500 text-sm" id="errorMessage">Une erreur est survenue</p>
+                <button id="retryBtn"
+                    class="mt-4 bg-stone-100 text-stone-700 font-medium py-3 px-6 rounded-full hover:bg-stone-200 transition-all duration-300">
+                    Réessayer
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- =============================================
+         FOOTER
+         ============================================= -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-stone-100/90 backdrop-blur-md border-t border-stone-200 py-3">
+        <p class="text-center text-stone-400 text-xs">
+            🔒 100% local • Tes données restent sur ton appareil
+        </p>
+    </footer>
+
+    <!-- =============================================
+         OVERLAY PUBLICITAIRE (Caché par défaut)
+         ============================================= -->
+    <div id="adOverlay" class="hidden fixed inset-0 z-50 bg-stone-100/95 overlay-blur flex items-center justify-center">
+        <div class="text-center p-8 max-w-sm">
+            <div class="w-24 h-24 mx-auto bg-stone-200 rounded-full flex items-center justify-center mb-6">
+                <span class="text-5xl">📺</span>
+            </div>
+            <p class="text-xl font-semibold mb-2 text-stone-700">Publicité en cours...</p>
+            <p class="text-stone-500 mb-6">Merci de supporter SaveMySnaps</p>
+
+            <!-- Décompte -->
+            <div class="relative w-20 h-20 mx-auto mb-6">
+                <svg class="w-20 h-20 transform -rotate-90">
+                    <circle cx="40" cy="40" r="36" stroke="#e7e5e4" stroke-width="6" fill="none" />
+                    <circle id="adProgress" cx="40" cy="40" r="36" stroke="#44403c" stroke-width="6" fill="none"
+                        stroke-dasharray="226.19" stroke-dashoffset="226.19" stroke-linecap="round" />
+                </svg>
+                <span id="adCountdown"
+                    class="absolute inset-0 flex items-center justify-center text-3xl font-bold text-stone-700">3</span>
+            </div>
+
+            <p class="text-stone-400 text-sm">Le téléchargement démarre automatiquement</p>
+        </div>
+    </div>
+
+    <!-- =============================================
+         OVERLAY DE GÉNÉRATION DU ZIP (Caché par défaut)
+         ============================================= -->
+    <div id="generatingOverlay"
+        class="hidden fixed inset-0 z-50 bg-stone-100/95 overlay-blur flex items-center justify-center">
+        <div class="text-center p-8 max-w-sm">
+            <div class="w-24 h-24 mx-auto bg-orange-100 rounded-full flex items-center justify-center mb-6">
+                <span class="text-5xl animate-spin">⚙️</span>
+            </div>
+            <p class="text-xl font-semibold mb-2 text-stone-700">Préparation en cours...</p>
+            <p class="text-stone-500 mb-4" id="generatingStatus">Compression des fichiers</p>
+
+            <!-- Barre de progression -->
+            <div class="w-64 mx-auto">
+                <div class="h-2 bg-stone-200 rounded-full overflow-hidden">
+                    <div id="generatingBar"
+                        class="progress-bar h-full bg-gradient-to-r from-orange-300 to-stone-400 rounded-full"
+                        style="width: 0%"></div>
+                </div>
+                <p class="text-stone-500 text-sm mt-2" id="generatingPercent">0%</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- =============================================
+         JAVASCRIPT - LOGIQUE PRINCIPALE
+         ============================================= -->
+    <script>
+        // =============================================
+        // VARIABLES GLOBALES
+        // =============================================
+
+        // Stockage des fichiers nettoyés après analyse
+        let cleanedFiles = [];
+        // Référence au fichier ZIP original
+        let originalZip = null;
+        // Extensions autorisées pour les médias
+        const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.mp4', '.mov'];
+
+        // =============================================
+        // ÉLÉMENTS DU DOM
+        // =============================================
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadContent = document.getElementById('uploadContent');
+        const loadingContent = document.getElementById('loadingContent');
+        const loadingStatus = document.getElementById('loadingStatus');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const progressPercent = document.getElementById('progressPercent');
+        const resultSection = document.getElementById('resultSection');
+        const fileCount = document.getElementById('fileCount');
+        const fileDetails = document.getElementById('fileDetails');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const errorSection = document.getElementById('errorSection');
+        const errorTitle = document.getElementById('errorTitle');
+        const errorMessage = document.getElementById('errorMessage');
+        const retryBtn = document.getElementById('retryBtn');
+        const adOverlay = document.getElementById('adOverlay');
+        const adCountdown = document.getElementById('adCountdown');
+        const adProgress = document.getElementById('adProgress');
+        const generatingOverlay = document.getElementById('generatingOverlay');
+        const generatingStatus = document.getElementById('generatingStatus');
+        const generatingBar = document.getElementById('generatingBar');
+        const generatingPercent = document.getElementById('generatingPercent');
+
+        // =============================================
+        // GESTION DU DRAG & DROP
+        // =============================================
+
+        // Empêcher le comportement par défaut pour le drag & drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Effet visuel lors du survol
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+
+        // Traitement du fichier déposé
+        dropZone.addEventListener('drop', handleDrop, false);
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                processFile(e.target.files[0]);
+            }
+        }
+
+        // =============================================
+        // TRAITEMENT DU FICHIER ZIP
+        // =============================================
+
+        async function processFile(file) {
+            // Réinitialiser l'état
+            resetState();
+
+            // Vérifier que c'est bien un fichier ZIP
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+                showError(
+                    'Format non supporté',
+                    'Merci d\'importer un fichier .ZIP. Tu as sélectionné : ' + file.name
+                );
+                return;
+            }
+
+            // Afficher l'état de chargement
+            uploadContent.classList.add('hidden');
+            loadingContent.classList.remove('hidden');
+            progressContainer.classList.remove('hidden');
+
+            try {
+                // Charger le fichier ZIP
+                updateProgress('Lecture du fichier ZIP...', 10);
+                const zip = await JSZip.loadAsync(file);
+                originalZip = zip;
+
+                // Scanner les fichiers
+                updateProgress('Analyse des fichiers...', 30);
+                await scanZipFiles(zip);
+
+                // Afficher les résultats
+                if (cleanedFiles.length > 0) {
+                    showResults();
+                } else {
+                    showError(
+                        'Aucun média trouvé',
+                        'Ce ZIP ne contient pas de photos ou vidéos (JPG, PNG, MP4, MOV).'
+                    );
+                }
+
+            } catch (error) {
+                console.error('Erreur lors du traitement:', error);
+                showError(
+                    'Erreur de lecture',
+                    'Impossible de lire ce fichier ZIP. Vérifie qu\'il n\'est pas corrompu.'
+                );
+            }
+        }
+
+        // =============================================
+        // ANALYSE DU CONTENU DU ZIP
+        // =============================================
+
+        async function scanZipFiles(zip) {
+            cleanedFiles = [];
+            const files = Object.keys(zip.files);
+            const totalFiles = files.length;
+            let processed = 0;
+
+            for (const filePath of files) {
+                const zipEntry = zip.files[filePath];
+
+                // Ignorer les dossiers
+                if (zipEntry.dir) {
+                    processed++;
+                    continue;
+                }
+
+                // Extraire l'extension
+                const fileName = filePath.split('/').pop();
+                const extension = '.' + fileName.split('.').pop().toLowerCase();
+
+                // Vérifier si c'est un média autorisé
+                if (ALLOWED_EXTENSIONS.includes(extension)) {
+                    cleanedFiles.push({
+                        originalPath: filePath,
+                        fileName: fileName,
+                        extension: extension
+                    });
+                }
+
+                // Mettre à jour la progression
+                processed++;
+                const percent = 30 + Math.round((processed / totalFiles) * 60);
+                updateProgress(`Scan: ${processed}/${totalFiles} fichiers`, percent);
+            }
+
+            updateProgress('Analyse terminée !', 100);
+        }
+
+        // =============================================
+        // AFFICHAGE DES RÉSULTATS
+        // =============================================
+
+        function showResults() {
+            // Masquer le chargement
+            loadingContent.classList.add('hidden');
+            progressContainer.classList.add('hidden');
+            uploadContent.classList.add('hidden');
+
+            // Compter les types de fichiers
+            const stats = {
+                photos: cleanedFiles.filter(f => ['.jpg', '.jpeg', '.png'].includes(f.extension)).length,
+                videos: cleanedFiles.filter(f => ['.mp4', '.mov'].includes(f.extension)).length
+            };
+
+            // Afficher le nombre total
+            fileCount.textContent = cleanedFiles.length;
+
+            // Afficher les détails
+            fileDetails.innerHTML = `
+                <div class="bg-stone-50 rounded-2xl p-4 text-center border border-stone-100">
+                    <p class="text-2xl mb-1">📸</p>
+                    <p class="text-xl font-bold text-stone-800">${stats.photos}</p>
+                    <p class="text-stone-500 text-sm">Photos</p>
+                </div>
+                <div class="bg-stone-50 rounded-2xl p-4 text-center border border-stone-100">
+                    <p class="text-2xl mb-1">🎬</p>
+                    <p class="text-xl font-bold text-stone-800">${stats.videos}</p>
+                    <p class="text-stone-500 text-sm">Vidéos</p>
+                </div>
+            `;
+
+            // Afficher la section résultat
+            resultSection.classList.remove('hidden');
+
+            // Scroller vers les résultats
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // =============================================
+        // GESTION DE LA PUBLICITÉ SIMULÉE
+        // =============================================
+
+        downloadBtn.addEventListener('click', showAd);
+
+        function showAd() {
+            // Afficher l'overlay de pub
+            adOverlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            // Démarrer le décompte
+            let countdown = 3;
+            adCountdown.textContent = countdown;
+
+            // Animation du cercle de progression (rayon 36, circonférence = 226.19)
+            const circumference = 2 * Math.PI * 36;
+            let progress = 0;
+
+            const interval = setInterval(() => {
+                progress += (100 / 30); // 30 étapes pour 3 secondes
+                const offset = circumference - (progress / 100) * circumference;
+                adProgress.style.strokeDashoffset = offset;
+            }, 100);
+
+            // Décompte des secondes
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    adCountdown.textContent = countdown;
+                } else {
+                    adCountdown.textContent = '✓';
+                }
+            }, 1000);
+
+            // Callback après 3 secondes
+            setTimeout(() => {
+                clearInterval(interval);
+                clearInterval(countdownInterval);
+                adOverlay.classList.add('hidden');
+                document.body.style.overflow = '';
+
+                // Lancer la génération du ZIP
+                generateCleanedZip();
+            }, 3000);
+        }
+
+        // =============================================
+        // GÉNÉRATION DU ZIP NETTOYÉ
+        // =============================================
+
+        async function generateCleanedZip() {
+            // Afficher l'overlay de génération
+            generatingOverlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            try {
+                // Créer un nouveau ZIP
+                const newZip = new JSZip();
+                const total = cleanedFiles.length;
+                let processed = 0;
+
+                for (const fileInfo of cleanedFiles) {
+                    // Récupérer le contenu du fichier original
+                    const content = await originalZip.files[fileInfo.originalPath].async('blob');
+
+                    // Ajouter au nouveau ZIP avec un nom simple (aplatissement)
+                    // Gérer les doublons en ajoutant un index si nécessaire
+                    let finalName = fileInfo.fileName;
+                    let counter = 1;
+                    while (newZip.files[finalName]) {
+                        const baseName = fileInfo.fileName.replace(fileInfo.extension, '');
+                        finalName = `${baseName}_${counter}${fileInfo.extension}`;
+                        counter++;
+                    }
+
+                    newZip.file(finalName, content);
+
+                    // Mettre à jour la progression
+                    processed++;
+                    const percent = Math.round((processed / total) * 100);
+                    generatingStatus.textContent = `${processed}/${total} fichiers`;
+                    generatingBar.style.width = `${percent}%`;
+                    generatingPercent.textContent = `${percent}%`;
+                }
+
+                // Générer le fichier ZIP final
+                generatingStatus.textContent = 'Finalisation...';
+                const blob = await newZip.generateAsync({
+                    type: 'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: { level: 6 }
+                }, (metadata) => {
+                    const percent = Math.round(metadata.percent);
+                    generatingBar.style.width = `${percent}%`;
+                    generatingPercent.textContent = `${percent}%`;
+                });
+
+                // Télécharger le fichier
+                const now = new Date();
+                const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+                saveAs(blob, `SaveMySnaps_Memories_${dateStr}.zip`);
+
+                // Masquer l'overlay
+                generatingOverlay.classList.add('hidden');
+                document.body.style.overflow = '';
+
+                // Message de succès
+                downloadBtn.innerHTML = '✓ Téléchargement lancé !';
+                downloadBtn.classList.remove('btn-pulse');
+                downloadBtn.disabled = true;
+                downloadBtn.classList.add('opacity-60', 'cursor-not-allowed');
+
+            } catch (error) {
+                console.error('Erreur lors de la génération:', error);
+                generatingOverlay.classList.add('hidden');
+                document.body.style.overflow = '';
+                showError(
+                    'Erreur de génération',
+                    'Impossible de créer le fichier ZIP. Réessaie.'
+                );
+            }
+        }
+
+        // =============================================
+        // FONCTIONS UTILITAIRES
+        // =============================================
+
+        function updateProgress(text, percent) {
+            progressText.textContent = text;
+            progressPercent.textContent = `${percent}%`;
+            progressBar.style.width = `${percent}%`;
+            loadingStatus.textContent = text;
+        }
+
+        function showError(title, message) {
+            // Masquer les autres sections
+            loadingContent.classList.add('hidden');
+            progressContainer.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            uploadContent.classList.remove('hidden');
+
+            // Afficher l'erreur
+            errorTitle.textContent = title;
+            errorMessage.textContent = message;
+            errorSection.classList.remove('hidden');
+        }
+
+        function resetState() {
+            // Réinitialiser toutes les variables et l'UI
+            cleanedFiles = [];
+            originalZip = null;
+
+            // Masquer les sections d'état
+            errorSection.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            loadingContent.classList.add('hidden');
+            progressContainer.classList.add('hidden');
+
+            // Réafficher l'upload
+            uploadContent.classList.remove('hidden');
+
+            // Réinitialiser la barre de progression
+            progressBar.style.width = '0%';
+
+            // Réinitialiser le bouton de téléchargement
+            downloadBtn.innerHTML = 'Télécharger mes souvenirs';
+            downloadBtn.classList.add('btn-pulse');
+            downloadBtn.disabled = false;
+            downloadBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+
+            // Réinitialiser l'input file
+            fileInput.value = '';
+        }
+
+        // Bouton Réessayer
+        retryBtn.addEventListener('click', resetState);
+
+        // =============================================
+        // MESSAGE DE DÉVELOPPEMENT (à retirer en production)
+        // =============================================
+
+        console.log('%c📸 SaveMySnaps', 'font-size: 20px; font-weight: bold; color: #44403c;');
+        console.log('%cTraitement 100% local', 'color: #a8a29e;');
+    </script>
+</body>
+
+</html>
